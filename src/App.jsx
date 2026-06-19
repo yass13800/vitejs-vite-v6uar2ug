@@ -4,6 +4,7 @@ import ClientList from './components/ClientList'
 import ClientDetail from './components/ClientDetail'
 import ClientForm from './components/ClientForm'
 import InterventionForm from './components/InterventionForm'
+import Dashboard from './components/Dashboard'
 import Profil from './components/Profil'
 
 function Mark() {
@@ -59,7 +60,7 @@ export default function App() {
   const [profil, setProfil] = useState(null)
   const [client, setClient] = useState(null)
   const [clientView, setClientView] = useState('detail')   // 'detail' | 'form' | 'edit'
-  const [view, setView] = useState('list')                 // 'list' | 'profil' | 'newclient'
+  const [view, setView] = useState('list')                 // 'list' | 'dashboard' | 'profil' | 'newclient'
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session))
@@ -75,13 +76,21 @@ export default function App() {
   if (session === undefined) return <div className="loading">Chargement…</div>
   if (!session) return <Login />
 
-  const openClient = c => { setClient(c); setClientView('detail'); setView('list') }
-  const backToList = () => { setClient(null); setView('list') }
+  const openClient = c => { setClient(c); setClientView('detail') }
+  const backToList = () => { setClient(null); if (view !== 'dashboard') setView('list') }
+  const isHome = !client && (view === 'list' || view === 'dashboard')
+
+  const seg = { display: 'flex', gap: 4, background: '#efece6', borderRadius: 999, padding: 4, marginBottom: 14 }
+  const segBtn = on => ({
+    flex: 1, padding: '8px 0', borderRadius: 999, border: 'none', cursor: 'pointer',
+    fontWeight: 600, fontSize: 14, background: on ? '#fff' : 'transparent', color: on ? '#1c1b1a' : '#8a857c',
+    boxShadow: on ? '0 1px 3px rgba(0,0,0,.08)' : 'none',
+  })
 
   let header, body
   if (view === 'newclient') {
     header = <button className="back" onClick={() => setView('list')}>‹ Clients</button>
-    body = <ClientForm onSaved={c => openClient(c)} onCancel={() => setView('list')} />
+    body = <ClientForm onSaved={c => { setView('list'); openClient(c) }} onCancel={() => setView('list')} />
   } else if (client && clientView === 'edit') {
     header = <button className="back" onClick={() => setClientView('detail')}>‹ Retour</button>
     body = <ClientForm client={client} onSaved={c => { setClient(c); setClientView('detail') }} onCancel={() => setClientView('detail')} />
@@ -89,7 +98,7 @@ export default function App() {
     header = <button className="back" onClick={() => setClientView('detail')}>‹ Retour</button>
     body = <InterventionForm client={client} profil={profil} onDone={() => setClientView('detail')} />
   } else if (client) {
-    header = <button className="back" onClick={backToList}>‹ Clients</button>
+    header = <button className="back" onClick={backToList}>‹ Retour</button>
     body = <ClientDetail client={client} profil={profil}
              onNew={() => setClientView('form')} onEdit={() => setClientView('edit')} onDeleted={backToList} />
   } else if (view === 'profil') {
@@ -97,7 +106,17 @@ export default function App() {
     body = <Profil profil={profil} onSaved={setProfil} onDone={() => setView('list')} />
   } else {
     header = <div className="brand"><Mark /><span>Protech Ramonage</span></div>
-    body = <ClientList onSelect={openClient} onNew={() => setView('newclient')} />
+    body = (
+      <>
+        <div style={seg}>
+          <button style={segBtn(view === 'dashboard')} onClick={() => setView('dashboard')}>Tableau de bord</button>
+          <button style={segBtn(view !== 'dashboard')} onClick={() => setView('list')}>Clients</button>
+        </div>
+        {view === 'dashboard'
+          ? <Dashboard onOpenClient={openClient} />
+          : <ClientList onSelect={openClient} onNew={() => setView('newclient')} />}
+      </>
+    )
   }
 
   return (
@@ -105,7 +124,7 @@ export default function App() {
       <header className="topbar">
         {header}
         <div className="top-actions">
-          {!client && view === 'list' &&
+          {isHome &&
             <button className="gear" onClick={() => setView('profil')} aria-label="Réglages"><Gear /></button>}
           <button className="signout" onClick={() => supabase.auth.signOut()}>Quitter</button>
         </div>
