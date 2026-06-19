@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../supabaseClient'
 
-export default function ClientList({ onSelect }) {
+export default function ClientList({ onSelect, onNew }) {
   const [clients, setClients] = useState([])
   const [loading, setLoading] = useState(true)
   const [q, setQ] = useState('')
@@ -36,6 +36,8 @@ export default function ClientList({ onSelect }) {
         <h1>Clients</h1>
         <span className="count">{filtered.length}</span>
       </div>
+
+      <button className="btn btn--primary btn--full" onClick={onNew}>+ Nouveau client</button>
 
       <input className="search" placeholder="Rechercher un nom, une adresse…"
              value={q} onChange={e => setQ(e.target.value)} />
