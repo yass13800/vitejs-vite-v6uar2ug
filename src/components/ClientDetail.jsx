@@ -23,7 +23,7 @@ export default function ClientDetail({ client, profil, onNew, onEdit, onDeleted 
 
   async function load() {
     const { data } = await supabase.from('interventions')
-      .select('id, date_intervention, type_appareil, numero_certificat, montant_ttc, conclusion, pdf_url, email_envoye_le')
+      .select('id, date_intervention, type_appareil, numero_certificat, montant_ttc, conclusion, pdf_url, email_envoye_le, paye')
       .eq('client_id', client.id).order('date_intervention', { ascending: false })
     setItems(data || [])
   }
@@ -39,6 +39,13 @@ export default function ClientDetail({ client, profil, onNew, onEdit, onDeleted 
       setRemoving(false); setConfirmDelete(false)
       setMsg('Suppression impossible : ' + (err?.message || err))
     }
+  }
+
+  async function togglePaye(it) {
+    const next = !it.paye
+    setItems(list => list.map(x => (x.id === it.id ? { ...x, paye: next } : x)))
+    await supabase.from('interventions')
+      .update({ paye: next, paye_le: next ? new Date().toISOString() : null }).eq('id', it.id)
   }
 
   async function resend(it) {
@@ -71,6 +78,11 @@ export default function ClientDetail({ client, profil, onNew, onEdit, onDeleted 
 
   const danger = { flex: 1, background: '#fbeaea', color: '#9a2b2b', border: '1px solid #e7c9c9' }
   const dangerOn = { flex: 1, background: '#9a2b2b', color: '#fff', border: '1px solid #9a2b2b' }
+  const linkBtn = { flex: 1, textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }
+  const paidOn = { fontSize: 11, padding: '2px 8px', borderRadius: 999, border: '1px solid #bfe3c9', background: '#e9f7ee', color: '#1f7a3d', cursor: 'pointer' }
+  const paidOff = { fontSize: 11, padding: '2px 8px', borderRadius: 999, border: '1px solid #e7c9c9', background: '#fbeaea', color: '#9a2b2b', cursor: 'pointer' }
+  const mapsUrl = 'https://www.google.com/maps/dir/?api=1&destination=' +
+    encodeURIComponent([client.adresse, client.ville].filter(Boolean).join(', '))
 
   return (
     <div className="form">
@@ -81,6 +93,8 @@ export default function ClientDetail({ client, profil, onNew, onEdit, onDeleted 
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
         <button className="btn btn--ghost" style={{ flex: 1 }} onClick={onEdit}>Modifier</button>
+        {client.adresse &&
+          <a className="btn btn--ghost" style={linkBtn} href={mapsUrl} target="_blank" rel="noreferrer">Itinéraire</a>}
         {!confirmDelete
           ? <button className="btn" style={danger} onClick={() => setConfirmDelete(true)}>Supprimer</button>
           : <button className="btn" style={dangerOn} onClick={removeClient} disabled={removing}>{removing ? '…' : 'Confirmer'}</button>}
@@ -108,7 +122,10 @@ export default function ClientDetail({ client, profil, onNew, onEdit, onDeleted 
                       <span className={'badge badge--' + conclClass(it.conclusion)}>{conclShort(it.conclusion)}</span>
                     </div>
                     <span className="hist-sub">{it.type_appareil || '—'} · N° {it.numero_certificat}{it.montant_ttc ? ` · ${it.montant_ttc} €` : ''}</span>
-                    <span className="hist-status">{it.email_envoye_le ? `Envoyé le ${fmt(it.email_envoye_le)}` : 'Non envoyé'}</span>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 2 }}>
+                      <span className="hist-status">{it.email_envoye_le ? `Envoyé le ${fmt(it.email_envoye_le)}` : 'Non envoyé'}</span>
+                      <button onClick={() => togglePaye(it)} style={it.paye ? paidOn : paidOff}>{it.paye ? 'Payé ✓' : 'À encaisser'}</button>
+                    </div>
                   </div>
                   <div className="hist-actions">
                     {it.pdf_url && <a className="mini" href={it.pdf_url} target="_blank" rel="noreferrer">PDF</a>}
