@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from './supabaseClient'
 import ClientList from './components/ClientList'
 import ClientDetail from './components/ClientDetail'
+import ClientForm from './components/ClientForm'
 import InterventionForm from './components/InterventionForm'
 import Profil from './components/Profil'
 
@@ -57,8 +58,8 @@ export default function App() {
   const [session, setSession] = useState(undefined)
   const [profil, setProfil] = useState(null)
   const [client, setClient] = useState(null)
-  const [clientView, setClientView] = useState('detail')   // 'detail' | 'form'
-  const [view, setView] = useState('list')                 // 'list' | 'profil'
+  const [clientView, setClientView] = useState('detail')   // 'detail' | 'form' | 'edit'
+  const [view, setView] = useState('list')                 // 'list' | 'profil' | 'newclient'
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session))
@@ -74,21 +75,29 @@ export default function App() {
   if (session === undefined) return <div className="loading">Chargement…</div>
   if (!session) return <Login />
 
-  const openClient = c => { setClient(c); setClientView('detail') }
+  const openClient = c => { setClient(c); setClientView('detail'); setView('list') }
+  const backToList = () => { setClient(null); setView('list') }
 
   let header, body
-  if (client && clientView === 'form') {
+  if (view === 'newclient') {
+    header = <button className="back" onClick={() => setView('list')}>‹ Clients</button>
+    body = <ClientForm onSaved={c => openClient(c)} onCancel={() => setView('list')} />
+  } else if (client && clientView === 'edit') {
+    header = <button className="back" onClick={() => setClientView('detail')}>‹ Retour</button>
+    body = <ClientForm client={client} onSaved={c => { setClient(c); setClientView('detail') }} onCancel={() => setClientView('detail')} />
+  } else if (client && clientView === 'form') {
     header = <button className="back" onClick={() => setClientView('detail')}>‹ Retour</button>
     body = <InterventionForm client={client} profil={profil} onDone={() => setClientView('detail')} />
   } else if (client) {
-    header = <button className="back" onClick={() => setClient(null)}>‹ Clients</button>
-    body = <ClientDetail client={client} profil={profil} onNew={() => setClientView('form')} onBack={() => setClient(null)} />
+    header = <button className="back" onClick={backToList}>‹ Clients</button>
+    body = <ClientDetail client={client} profil={profil}
+             onNew={() => setClientView('form')} onEdit={() => setClientView('edit')} onDeleted={backToList} />
   } else if (view === 'profil') {
     header = <button className="back" onClick={() => setView('list')}>‹ Retour</button>
     body = <Profil profil={profil} onSaved={setProfil} onDone={() => setView('list')} />
   } else {
     header = <div className="brand"><Mark /><span>Protech Ramonage</span></div>
-    body = <ClientList onSelect={openClient} />
+    body = <ClientList onSelect={openClient} onNew={() => setView('newclient')} />
   }
 
   return (
