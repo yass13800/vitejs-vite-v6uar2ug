@@ -9,15 +9,17 @@ const conclShort = c => (c === 'vacant' ? 'Vacant' : c === 'reserve' ? 'Sous ré
 function blobToBase64(blob) {
   return new Promise((res, rej) => {
     const r = new FileReader()
-    r.onload = () => res(String(r.result).split(',')[1]); r.onerror = rej
+    r.onloadend = () => res(String(r.result).split(',')[1]); r.onerror = rej
     r.readAsDataURL(blob)
   })
 }
 
-export default function ClientDetail({ client, profil, onNew, onBack }) {
+export default function ClientDetail({ client, profil, onNew, onEdit, onDeleted }) {
   const [items, setItems] = useState(null)
   const [sending, setSending] = useState(null)
   const [msg, setMsg] = useState('')
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [removing, setRemoving] = useState(false)
 
   async function load() {
     const { data } = await supabase.from('interventions')
@@ -26,6 +28,18 @@ export default function ClientDetail({ client, profil, onNew, onBack }) {
     setItems(data || [])
   }
   useEffect(() => { load() }, [client.id])
+
+  async function removeClient() {
+    setRemoving(true)
+    try {
+      const { error } = await supabase.from('clients').delete().eq('id', client.id)
+      if (error) throw error
+      onDeleted()
+    } catch (err) {
+      setRemoving(false); setConfirmDelete(false)
+      setMsg('Suppression impossible : ' + (err?.message || err))
+    }
+  }
 
   async function resend(it) {
     if (!client.email) return
@@ -55,12 +69,25 @@ export default function ClientDetail({ client, profil, onNew, onBack }) {
     } finally { setSending(null) }
   }
 
+  const danger = { flex: 1, background: '#fbeaea', color: '#9a2b2b', border: '1px solid #e7c9c9' }
+  const dangerOn = { flex: 1, background: '#9a2b2b', color: '#fff', border: '1px solid #9a2b2b' }
+
   return (
     <div className="form">
       <div className="form-client">
         <h1>{client.nom} {client.prenom}</h1>
         <p>{client.adresse}{client.ville ? `, ${client.ville}` : ''}{client.telephone ? ` · ${client.telephone}` : ''}{client.email ? ` · ${client.email}` : ''}</p>
       </div>
+
+      <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+        <button className="btn btn--ghost" style={{ flex: 1 }} onClick={onEdit}>Modifier</button>
+        {!confirmDelete
+          ? <button className="btn" style={danger} onClick={() => setConfirmDelete(true)}>Supprimer</button>
+          : <button className="btn" style={dangerOn} onClick={removeClient} disabled={removing}>{removing ? '…' : 'Confirmer'}</button>}
+      </div>
+      {confirmDelete &&
+        <p className="warn">La suppression effacera aussi toutes les fiches de ce client.{' '}
+          <button className="add" onClick={() => setConfirmDelete(false)}>Annuler</button></p>}
 
       <button className="btn btn--primary btn--full" onClick={onNew}>+ Nouvelle intervention</button>
 
