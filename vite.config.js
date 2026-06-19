@@ -3,15 +3,20 @@ import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
+  resolve: {
+    alias: { buffer: 'buffer' },
+  },
+  define: {
+    global: 'globalThis',
+  },
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',          // évite les caches périmés après déploiement
+      registerType: 'autoUpdate',
       includeAssets: ['icon-192.png', 'icon-512.png'],
       manifest: {
         name: 'Protech Ramonage — Certificats',
         short_name: 'Ramonage',
-        description: 'Génération et envoi des certificats de ramonage',
         theme_color: '#1c1b1a',
         background_color: '#1c1b1a',
         display: 'standalone',
